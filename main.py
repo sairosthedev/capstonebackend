@@ -45,9 +45,18 @@ app = FastAPI(title="Farm Advisory API")
 
 def _parse_origins(value: str | None) -> list[str]:
     if not value:
-        return ["*"]
+        return [
+            "http://localhost:5173",
+            "http://localhost:4173",
+            "https://capstoneproject-ecru.vercel.app",
+        ]
     origins = [origin.strip() for origin in value.split(",") if origin.strip()]
-    return origins or ["*"]
+    default_origins = [
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "https://capstoneproject-ecru.vercel.app",
+    ]
+    return list(dict.fromkeys(default_origins + origins))
 
 cors_origins = _parse_origins(os.getenv("CORS_ORIGINS"))
 app.add_middleware(
