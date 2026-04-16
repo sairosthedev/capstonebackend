@@ -60,17 +60,31 @@ app.add_middleware(
 # Load resources at startup
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(BASE)
-DATA_FILE = os.path.join(ROOT, "unified_agriculture_data_production.csv")
-if not os.path.exists(DATA_FILE):
-    DATA_FILE = os.path.join(ROOT, "unified_agriculture_data_real.csv")
-if not os.path.exists(DATA_FILE):
-    DATA_FILE = os.path.join(ROOT, "unified_agriculture_data.csv")
-MODEL_FILE = os.path.join(ROOT, "crop_suitability_classifier_production.pkl")
-if not os.path.exists(MODEL_FILE):
-    MODEL_FILE = os.path.join(ROOT, "best_classifier_random_forest.pkl")
-ALT_MODEL_FILE = os.path.join(ROOT, "best_classifier_random_forest.pkl")
-SCALER_FILE = os.path.join(ROOT, "feature_scaler_production.pkl")
-META_FILE = os.path.join(ROOT, "model_metadata.json")
+SEARCH_DIRS = [BASE, ROOT, os.getcwd()]
+
+
+def _find_file(candidates: list[str]) -> str | None:
+    for directory in SEARCH_DIRS:
+        for name in candidates:
+            candidate = os.path.join(directory, name)
+            if os.path.exists(candidate):
+                return candidate
+    return None
+
+
+DATA_FILE = _find_file([
+    "unified_agriculture_data_production.csv",
+    "unified_agriculture_data_real.csv",
+    "unified_agriculture_data.csv",
+])
+MODEL_FILE = _find_file([
+    "crop_suitability_classifier_production.pkl",
+    "best_classifier_random_forest.pkl",
+])
+ALT_MODEL_FILE = _find_file(["best_classifier_random_forest.pkl"])
+SCALER_FILE = _find_file(["feature_scaler_production.pkl"])
+META_FILE = _find_file(["model_metadata.json"])
+RULES_FILE = _find_file(["agritex_rules.py"])
 
 df = None
 model = None
@@ -82,7 +96,18 @@ startup_error = None
 
 def load_resources():
     import sys
-    sys.path.insert(0, ROOT)
+
+    for directory in SEARCH_DIRS:
+        if directory and directory not in sys.path:
+            sys.path.insert(0, directory)
+
+    if RULES_FILE is None:
+        raise FileNotFoundError("agritex_rules.py not found in deployment paths")
+    if DATA_FILE is None:
+        raise FileNotFoundError("No agriculture data CSV found in deployment paths")
+    if MODEL_FILE is None:
+        raise FileNotFoundError("No model .pkl file found in deployment paths")
+
     from agritex_rules import AgritexRuleEngine
 
     df = pd.read_csv(DATA_FILE)
