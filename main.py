@@ -77,6 +77,7 @@ model = None
 scaler = None
 rule_engine = None
 feature_cols = None
+startup_error = None
 
 
 def load_resources():
@@ -174,8 +175,17 @@ sys.path.insert(0, ROOT)
 
 @app.on_event("startup")
 def startup():
-    global df, model, scaler, rule_engine, feature_cols
-    df, model, scaler, rule_engine, feature_cols = load_resources()
+    global df, model, scaler, rule_engine, feature_cols, startup_error
+    try:
+        df, model, scaler, rule_engine, feature_cols = load_resources()
+        startup_error = None
+    except Exception as exc:
+        startup_error = f"Startup failed: {exc}"
+        df = None
+        model = None
+        scaler = None
+        rule_engine = None
+        feature_cols = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -198,13 +208,17 @@ class PlaceSearchRequest(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "data_points": len(df) if df is not None else 0}
+    return {
+        "status": "ok" if startup_error is None else "degraded",
+        "data_points": len(df) if df is not None else 0,
+        "startup_error": startup_error,
+    }
 
 
 @app.get("/api/stats")
 def stats():
     if df is None:
-        raise HTTPException(500, "Data not loaded")
+        raise HTTPException(500, startup_error or "Data not loaded")
     suitable = (df["suitability_score"] > 50).sum()
     avg_rain = float(df["rainfall_mean"].mean())
     if avg_rain < 150:  # likely monthly mm, convert to annual
@@ -237,7 +251,7 @@ def search_places(req: PlaceSearchRequest):
 def analyze(req: AnalyzeRequest):
     global df, model, scaler, rule_engine, feature_cols
     if df is None or model is None:
-        raise HTTPException(500, "Model not loaded")
+        raise HTTPException(500, startup_error or "Model not loaded")
 
     # If any manual sample fields are provided, use them for analysis
     manual_fields = [
