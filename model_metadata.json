@@ -1,0 +1,22 @@
+{
+  "model_name": "Random Forest",
+  "accuracy": 0.9473333333333334,
+  "f1_score": 0.9467165694349119,
+  "selected_features": [
+    "bulk_density",
+    "coarse_fragments",
+    "nitrogen",
+    "organic_carbon_density",
+    "sand",
+    "soil_clay",
+    "soil_organic_carbon_stock",
+    "soil_soc",
+    "rainfall_std",
+    "rainfall_min",
+    "rainfall_max",
+    "rainfall_q25",
+    "rainfall_q75",
+    "rainfall_cv"
+  ],
+  "n_features": 14
+}
